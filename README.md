@@ -17,7 +17,7 @@ the conversion handles the following:
 If your problem fits in this fragment (it can contain other facts as well), then
 you can run:
 
-   z3 solve.
+    z3 solve.
 
 If the tactic succees then the solver solved the tactic. If it fails it will
 display an error message. To get more information about the problem that was
