@@ -1,0 +1,7 @@
+-I src
+-R theories SMT
+
+-I $(COQLIB)/user-contrib/PluginUtils/
+
+src/smtTactic.ml4
+theories/Tactic.v
