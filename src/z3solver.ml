@@ -89,4 +89,4 @@ end
 
 module Z3RealSolver = Solver.Make (Solver.RealInstance) (Z3Exec) ;;
 
-SmtTactic.SmtTactic.register_smt_solver "z3" (fun _ -> Z3RealSolver.solve)
+Tactic.SmtTactic.register_smt_solver "z3" (fun _ -> Z3RealSolver.solve)

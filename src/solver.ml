@@ -72,7 +72,13 @@ struct
     List.fold_left (fun acc (name, _decl, typ) ->
         Parse.parse_hypothesis env evm name typ acc) res hyps
 
-  let false_type : Term.constr Lazy.t = lazy (assert false)
+  module Std = Coqstd.Std
+      (struct
+        let contrib_name = "smt-check-real-instance"
+      end)
+
+  let false_type : Term.constr Lazy.t =
+    Std.resolve_symbol ["Coq";"Init";"Logic"] "False"
 
   let solve verbose =
     Proofview.Goal.nf_enter begin fun gl ->

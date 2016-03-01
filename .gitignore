@@ -13,3 +13,7 @@ Makefile.coq
 *.ml.d
 *.mli.d
 .merlin
+*.a
+*.cma
+*.cmxa
+*.mllib.d

@@ -12,22 +12,28 @@ Proof.
   tauto.
 Qed.
 
+Goal forall A B : Prop, True -> False -> A /\ B.
+  intros.
+  smt solve calling "z3".
+  tauto.
+Qed.
+
 Local Open Scope R_scope.
 
 Goal forall x : R, x < 0 -> x + x < x.
 Proof.
   intros.
-  z3 solve.
+  smt solve.
 Abort.
 
 Goal forall x : R, ~(x = -1).
 Proof.
   intros.
-  Fail z3 solve.
+  Fail smt solve.
 Abort.
 
 Goal forall x : R, ~(x = 1).
 Proof.
   intros.
-  Fail z3 solve.
+  Fail smt solve.
 Abort.
