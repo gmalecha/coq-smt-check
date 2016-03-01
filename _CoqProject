@@ -3,5 +3,8 @@
 
 -I $(COQLIB)/user-contrib/PluginUtils/
 
-src/smtTactic.ml4
+# src/smtTactic.ml4
+src/solver.mli
+src/solver.ml
+
 theories/Tactic.v

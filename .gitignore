@@ -10,3 +10,6 @@
 *.o
 Makefile.coq
 *.aux
+*.ml.d
+*.mli.d
+.merlin
