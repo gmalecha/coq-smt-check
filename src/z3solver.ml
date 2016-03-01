@@ -48,8 +48,8 @@ struct
       let lst = Str.matched_group 1 result in
       let names = Str.split ptrn_split lst in
       let names = List.map (fun x -> RealInstance.get_hypothesis x inst) names in
-      Unsat (List.exists (function None -> true | _ -> false) names,
-             filter_map (fun x -> x) names)
+      Unsat (Some (List.exists (function None -> true | _ -> false) names,
+                   filter_map (fun x -> x) names))
     else if Str.string_match ptrn_failure result 0 then
       let result = Str.matched_group 1 result in
       Sat (extract_model inst 0 result)

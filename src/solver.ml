@@ -50,7 +50,7 @@ end
 
 type smt_result =
     Sat of (Term.constr * string) list
-  | Unsat of bool * Names.identifier list (* the core *)
+  | Unsat of (bool * Names.identifier list) option (* the core *)
   | Unknown
 
 module type Exec =
@@ -61,16 +61,16 @@ sig
 end
 
 module Make
-    (Parse : Instance)
-    (Exec : Exec with type instance = Parse.instance) : Solver =
+    (Inst : Instance)
+    (Exec : Exec with type instance = Inst.instance) : Solver =
 struct
-  open Parse
+  open Inst
   open Exec
 
   let parse_instance env evm hyps concl =
-    let res = Parse.parse_conclusion env evm concl in
+    let res = Inst.parse_conclusion env evm concl in
     List.fold_left (fun acc (name, _decl, typ) ->
-        Parse.parse_hypothesis env evm name typ acc) res hyps
+        Inst.parse_hypothesis env evm name typ acc) res hyps
 
   module Std = Coqstd.Std
       (struct
@@ -80,31 +80,39 @@ struct
   let false_type : Term.constr Lazy.t =
     Std.resolve_symbol ["Coq";"Init";"Logic"] "False"
 
+  let pr_model env evm =
+    Pp.pr_vertical_list
+      (fun (var,value) ->
+         Pp.(Printer.pr_constr_env env evm var ++
+             spc () ++ str "=" ++ spc () ++ str value))
+
   let solve verbose =
     Proofview.Goal.nf_enter begin fun gl ->
     let goal = Proofview.Goal.concl gl in
     let hyps = Proofview.Goal.hyps gl in
-    let evn  = Proofview.Goal.env gl in
+    let env  = Proofview.Goal.env gl in
     let evm  = Proofview.Goal.sigma gl in
 
     try
-      let inst = parse_instance evn evm hyps goal in
+      let inst = parse_instance env evm hyps goal in
       match Exec.execute inst with
         Sat model when verbose ->
         let msg =
 	   Pp.(   str "z3 failed to solve the goal."
-               ++ fnl () (*
-	       ++ pr_model tbl model) *) )
+               ++ fnl ()
+	       ++ pr_model env evm model)
 	in
         Tacticals.New.tclFAIL 0 msg
       | Sat _ ->
         Tacticals.New.tclFAIL 0 Pp.(str "Satisfiable")
-      | Unsat (need_concl, core) ->
+      | Unsat (Some (need_concl, core)) ->
         let open Proofview.Monad in
         (if not need_concl
          then Tactics.elim_type (Lazy.force false_type)
          else Proofview.tclUNIT ()) >>
         (Tactics.keep core)
+      | Unsat None ->
+        Tacticals.New.tclIDTAC
       | Unknown ->
         Tacticals.New.tclFAIL 0 Pp.(str "solver returned unkown")
     with

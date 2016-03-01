@@ -26,7 +26,7 @@ module ParseOnlyProp (I : Instance) : Instance with type instance = I.instance
 
 type smt_result =
     Sat of (Term.constr * string) list
-  | Unsat of bool * Names.identifier list (* the core *)
+  | Unsat of (bool * Names.identifier list) option (* the core *)
   | Unknown
 
 module type Exec =
