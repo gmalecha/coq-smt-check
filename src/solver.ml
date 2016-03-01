@@ -15,9 +15,12 @@ sig
   val parse_hypothesis : Environ.env -> Evd.evar_map ->
     Names.Id.t -> Term.constr -> instance -> instance
 
-  val write_instance : pretty:bool -> out_channel -> instance -> unit
+  val write_instance : ?pretty:bool -> Format.formatter -> instance -> unit
 
   val get_variable : string -> instance -> Term.constr
+
+  (* Returning [None] means the conclusion *)
+  val get_hypothesis : string -> instance -> Names.identifier option
 end
 
 module ParseOnlyProp (P : Instance) :
@@ -42,7 +45,7 @@ struct
 
   let write_instance = P.write_instance
   let get_variable = P.get_variable
-
+  let get_hypothesis = P.get_hypothesis
 end
 
 type smt_result =
@@ -57,8 +60,9 @@ sig
   val execute : instance -> smt_result
 end
 
-module Solver (Parse : Instance)
-              (Exec : Exec with type instance = Parse.instance) : Solver =
+module Make
+    (Parse : Instance)
+    (Exec : Exec with type instance = Parse.instance) : Solver =
 struct
   open Parse
   open Exec
@@ -105,7 +109,7 @@ struct
 end
 
 
-module RealInstance =
+module RealInstance : Instance =
 struct
 
   module Std = Coqstd.Std
@@ -338,82 +342,8 @@ struct
       None -> raise Not_found
     | Some x -> x
 
-end
-
-module Z3Exec =
-struct
-  open RealInstance
-
-  type instance = RealInstance.instance
-
-  let debug x =
-    Pp.msg_debug (x ())
-
-  let ptrn_success = Str.regexp "^unsat (\\([^)]*\\))"
-  let ptrn_failure = Str.regexp "^sat ([^)]*) (model\\(.+\\)) ?$"
-  let ptrn_unknown = Str.regexp "^unknown"
-  let ptrn_split = Str.regexp " "
-
-  let ptrn_def = Str.regexp "(define-fun \\(\\w+\\) () Real[ \n\r\t]+(?\\(-? [0-9]*.[0-9]*\\))?)"
-
-  let extract_model inst =
-    let rec extract_model start result =
-      debug (fun _ -> Pp.(str "extract model: " ++ fnl () ++
-                          str (String.sub result start (String.length result - start)) ++ fnl ())) ;
-      try
-        let _ = Str.search_forward ptrn_def result start in
-        let var = RealInstance.get_variable (Str.matched_group 1 result) inst in
-        let value = Str.matched_group 2 result in
-        (var, value) :: extract_model (Str.match_end ()) result
-      with
-        Not_found -> []
-    in extract_model
-
-  let parse_result inst result =
-    let _ =
-      debug (fun _ -> Pp.(str "Z3 output" ++ fnl () ++ str result))
-    in
-    let result = Str.global_replace (Str.regexp (Str.quote "\n")) " " result in
-    let result = Str.global_replace (Str.regexp (Str.quote "\r")) "" result in
-    if Str.string_partial_match ptrn_success result 0 then
-      let lst = Str.matched_group 1 result in
-      let names = Str.split ptrn_split lst in
-      let (concl, hyps) = List.partition (fun x -> x = conclusion_name) names in
-      Unsat (concl = [],
-             List.map Names.id_of_string hyps)
-    else if Str.string_match ptrn_failure result 0 then
-      let result = Str.matched_group 1 result in
-      Sat (extract_model inst 0 result)
-    else if Str.string_match ptrn_unknown result 0 then
-      Unknown
-    else
-      let _ = Format.eprintf "Bad Z3 output:\n%s" result in
-      assert false
-
-  let execute inst =
-    let (in_channel,out_channel) = Unix.open_process "z3 -in -smt2" in
-    let _ =
-      begin
-	let fmt = Format.formatter_of_out_channel out_channel in
-	Format.fprintf fmt "(set-option :produce-unsat-cores true)\n" ;
-	Format.fprintf fmt "(set-option :produce-models true)\n" ;
-        RealInstance.write_instance fmt inst ;
-	Format.fprintf fmt "(check-sat)\n(get-unsat-core)\n(get-model)" ;
-	Format.pp_print_flush fmt () ;
-	flush out_channel ;
-	close_out out_channel
-      end
-    in
-    let buffer_size = 2048 in
-    let buffer = Buffer.create buffer_size in
-    let string = Bytes.create buffer_size in
-    let chars_read = ref 1 in
-    while !chars_read <> 0 do
-      chars_read := input in_channel string 0 buffer_size;
-      Buffer.add_substring buffer string 0 !chars_read
-    done;
-    ignore (Unix.close_process (in_channel, out_channel));
-    let result = Buffer.contents buffer in
-    parse_result inst result
+  let get_hypothesis x inst =
+    if x = conclusion_name then None
+    else Some (Names.id_of_string x)
 
 end

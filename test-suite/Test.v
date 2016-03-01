@@ -3,10 +3,12 @@ Require Import Coq.Strings.String.
 Require Import Coq.Reals.Rdefinitions.
 Require Import Coq.Reals.RIneq.
 
+Set SMT Solver "z3".
+
 Goal forall A B : Prop, A /\ B -> B.
 Proof.
   intros.
-  z3 solve.
+  smt solve.
   tauto.
 Qed.
 

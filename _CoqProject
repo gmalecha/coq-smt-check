@@ -1,10 +1,11 @@
 -I src
--R theories SMT
+-Q theories SMT
 
 -I $(COQLIB)/user-contrib/PluginUtils/
 
-# src/smtTactic.ml4
+src/smtTactic.ml4
 src/solver.mli
 src/solver.ml
+src/z3solver.ml
 
 theories/Tactic.v

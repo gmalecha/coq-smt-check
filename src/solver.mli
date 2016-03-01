@@ -14,9 +14,12 @@ sig
   val parse_hypothesis : Environ.env -> Evd.evar_map ->
     Names.Id.t -> Term.constr -> instance -> instance
 
-  val write_instance : pretty:bool -> out_channel -> instance -> unit
+  val write_instance : ?pretty:bool -> Format.formatter -> instance -> unit
 
   val get_variable : string -> instance -> Term.constr
+
+  (* Returning [None] means the conclusion *)
+  val get_hypothesis : string -> instance -> Names.identifier option
 end
 
 module ParseOnlyProp (I : Instance) : Instance with type instance = I.instance
@@ -33,5 +36,8 @@ sig
   val execute : instance -> smt_result
 end
 
-module Solver (Parse : Instance)
-              (Exec : Exec with type instance = Parse.instance) : Solver
+module Make
+    (Parse : Instance)
+    (Exec : Exec with type instance = Parse.instance) : Solver
+
+module RealInstance : Instance
