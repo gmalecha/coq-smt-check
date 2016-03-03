@@ -1,11 +1,11 @@
 coq-smt-check
 =============
 
-This is a simple way to invoke an SMT solver (currently Z3) on Coq goals.
+This is a simple way to invoke an SMT solver on Coq goals.
 It does *NOT* generate proof objects. It is meant purely for sanity checking
 goals.
 
-The main tactic is 'z3 solve' which invokes z3 on the current goal. The
+The main tactic is 'smt solve' which invokes an smt on the current goal. The
 core of the plugin is the conversion from Coq to SMT2 format. At the moment,
 the conversion handles the following:
 
@@ -17,13 +17,47 @@ the conversion handles the following:
 If your problem fits in this fragment (it can contain other facts as well), then
 you can run:
 
-    z3 solve.
+    smt solve.
 
 If the tactic succees then the solver solved the tactic. If it fails it will
 display an error message. To get more information about the problem that was
-passed to the smt solver, run 'z3 solve debug'.
+passed to the smt solver, run 'smt solve_dbg'.
+
+You can also specify the solver to use in the tactic using the syntax:
+
+   smt solve calling "<solver-name>".
+
+Where `<solver-name>' is, e.g. z3 or cvc4.
 
 See the test-suite directory for examples.
+
+Solvers
+-------
+
+Currently, the code supports Z3 and CVC4. You need to set the solver using
+
+   Set SMT Solver "z3".
+
+or
+
+   Set SMT Solver "cvc4".
+
+You can toggle debugging globally using:
+
+   Set SMT Debug.
+   Unset SMT Debug.
+
+Implementing Your Own Solver
+----------------------------
+
+You can implement your own solver interface using a Coq Plugin. At the high
+level, you should call:
+
+   SmtTactic.register_smt_solver : <name> -> (<options> -> <solver>) -> unit
+
+and then set up the solver appropriately. Note that solver names can *NOT*
+contain colons (:). The string passed will be split on the first colon (if
+one exists) and the rest of the string will be passed as `options` above.
 
 Install from OPAM
 -----------------

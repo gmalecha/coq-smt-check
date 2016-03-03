@@ -103,12 +103,20 @@ struct
 
 end
 
+(** TODO: Clean this up a bit **)
+
 TACTIC EXTEND smt_tac_solve
   | ["smt" "solve"] -> [SmtTactic.smtTactic None]
 END;;
 
 TACTIC EXTEND smt_tac_solve_dbg
-  | ["smt" "solve_dbg"] -> [SmtTactic.smtTactic ~debug:true ~verbose:true None]
+  | ["smt" "solve_dbg"] ->
+    [SmtTactic.smtTactic ~debug:true ~verbose:true None]
+END;;
+
+TACTIC EXTEND smt_tac_solve_dbg
+  | ["smt" "solve_dbg" "calling" string(s) ] ->
+    [SmtTactic.smtTactic ~debug:true ~verbose:true (Some s)]
 END;;
 
 TACTIC EXTEND smt_tac_solve_calling
