@@ -13,8 +13,8 @@ DECLARE PLUGIN "smtTactic"
 
 module SmtTactic
 : sig
-    val smtTactic : ?debug:bool -> string option -> unit Proofview.tactic
-    val register_smt_solver : string -> (string -> bool -> unit Proofview.tactic) -> unit
+    val smtTactic : ?debug:bool -> ?verbose:bool -> string option -> unit Proofview.tactic
+    val register_smt_solver : string -> (string -> debug:bool -> verbose:bool -> unit Proofview.tactic) -> unit
   end =
 struct
 
@@ -27,21 +27,22 @@ struct
   end
   module Smap = Map.Make (Scmp)
 
-  let smt_debug = ref true
+  let smt_debug = ref false
 
-  let all_solvers : (string -> bool -> unit Proofview.tactic) Smap.t ref =
+  let all_solvers : (string -> debug:bool -> verbose:bool -> unit Proofview.tactic) Smap.t ref =
     ref Smap.empty
 
-  let register_smt_solver (name : string) solver =
+  let register_smt_solver (name : string)
+      (solver : string -> debug:bool -> verbose:bool -> unit Proofview.tactic) =
     all_solvers := Smap.add name solver !all_solvers
 
   type smtSolver =
     { name : string
-    ; run : bool -> unit Proofview.tactic }
+    ; run : debug:bool -> verbose:bool -> unit Proofview.tactic }
 
   let the_solver    =
     ref { name = "<unset>"
-        ; run = fun _ ->
+        ; run = fun ~debug ~verbose ->
             Tacticals.New.tclFAIL 0 Pp.(str "solver not set") }
 
   let smt_parser s =
@@ -87,11 +88,14 @@ struct
       ; optwrite = (:=) smt_debug })
 
   (** This is the entry-point to the tactic **)
-  let smtTactic ?debug = function
-      None -> (!the_solver).run (Option.default !smt_debug debug)
+  let smtTactic ?debug ?verbose opt =
+    let debug = Option.default !smt_debug debug in
+    let verbose = Option.default false verbose in
+    match opt with
+      None -> (!the_solver).run ~debug ~verbose
     | Some solver ->
       try
-        (smt_parser solver).run (Option.default !smt_debug debug)
+        (smt_parser solver).run ~debug ~verbose
       with
         Not_found ->
         let msg = Pp.(str "No SMT solver named: " ++ qstring solver) in
@@ -104,7 +108,7 @@ TACTIC EXTEND smt_tac_solve
 END;;
 
 TACTIC EXTEND smt_tac_solve_dbg
-  | ["smt" "solve_dbg"] -> [SmtTactic.smtTactic ~debug:true None]
+  | ["smt" "solve_dbg"] -> [SmtTactic.smtTactic ~debug:true ~verbose:true None]
 END;;
 
 TACTIC EXTEND smt_tac_solve_calling

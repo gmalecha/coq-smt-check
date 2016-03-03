@@ -1,6 +1,6 @@
 module type Solver =
 sig
-  val solve : bool -> unit Proofview.tactic
+  val solve : debug:bool -> verbose:bool -> unit Proofview.tactic
 end
 
 
@@ -33,7 +33,7 @@ module type Exec =
 sig
   type instance
 
-  val execute : instance -> smt_result
+  val execute : debug:((unit -> Pp.std_ppcmds) -> unit) -> instance -> smt_result
 end
 
 module Make

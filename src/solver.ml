@@ -2,7 +2,7 @@ open Plugin_utils
 
 module type Solver =
 sig
-  val solve : bool -> unit Proofview.tactic
+  val solve : debug:bool -> verbose:bool -> unit Proofview.tactic
 end
 
 module type Instance =
@@ -57,7 +57,7 @@ module type Exec =
 sig
   type instance
 
-  val execute : instance -> smt_result
+  val execute : debug:((unit -> Pp.std_ppcmds) -> unit) -> instance -> smt_result
 end
 
 module Make
@@ -86,19 +86,23 @@ struct
          Pp.(Printer.pr_constr_env env evm var ++
              spc () ++ str "=" ++ spc () ++ str value))
 
-  let solve verbose =
+  let solve ~debug ~verbose =
     Proofview.Goal.nf_enter begin fun gl ->
     let goal = Proofview.Goal.concl gl in
     let hyps = Proofview.Goal.hyps gl in
     let env  = Proofview.Goal.env gl in
     let evm  = Proofview.Goal.sigma gl in
+    let debug =
+      if debug then (fun x -> Pp.msg_debug (x ()))
+      else fun _ -> ()
+    in
 
     try
       let inst = parse_instance env evm hyps goal in
-      match Exec.execute inst with
+      match Exec.execute debug inst with
         Sat model when verbose ->
         let msg =
-	   Pp.(   str "z3 failed to solve the goal."
+	   Pp.(   str "solver failed to solve the goal."
                ++ fnl ()
 	       ++ pr_model env evm model)
 	in
