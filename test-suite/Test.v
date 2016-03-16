@@ -3,7 +3,8 @@ Require Import Coq.Strings.String.
 Require Import Coq.Reals.Rdefinitions.
 Require Import Coq.Reals.RIneq.
 
-Set SMT Solver "cvc4".
+Set SMT Solver "z3".
+Set SMT Debug.
 
 Goal forall A B : Prop, A /\ B -> B.
 Proof.

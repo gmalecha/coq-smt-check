@@ -9,6 +9,7 @@
 *.ml4.d
 *.o
 Makefile.coq
+Makefile.coq.bak
 *.aux
 *.ml.d
 *.mli.d

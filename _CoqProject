@@ -6,8 +6,9 @@
 src/tactic.ml4
 src/solver.mli
 src/solver.ml
-src/z3solver.ml
-src/cvc4solver.ml
+src/z3Solver.ml
+src/cvc4Solver.ml
+src/polyaSolver.ml
 src/smtTactic.mllib
 
 theories/Tactic.v
