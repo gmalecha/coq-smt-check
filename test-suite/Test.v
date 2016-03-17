@@ -1,4 +1,4 @@
-Require Import SMT.Tactic.
+Require Import SMTC.Tactic.
 Require Import Coq.Strings.String.
 Require Import Coq.Reals.Rdefinitions.
 Require Import Coq.Reals.RIneq.

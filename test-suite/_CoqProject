@@ -1,5 +1,5 @@
 -I ../src
--Q ../theories SMT
+-Q ../theories SMTC
 -R .
 
 -I $(COQLIB)/user-contrib/PluginUtils/
