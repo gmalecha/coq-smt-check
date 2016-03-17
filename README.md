@@ -29,13 +29,13 @@ If the solver fails to solve the goal then the tactic will fail and
 display the sat model if the solver returns one. A common way to use
 the tactic is something like the following:
 
-   smt solve; admit.
+    smt solve; admit.
 
 which will admit the goal only if it is solved by the SMT solver.
 
 You can also specify the solver to use in the tactic using the syntax:
 
-   smt solve calling "<solver-name>".
+    smt solve calling "<solver-name>".
 
 Where `<solver-name>' is, e.g. z3 or cvc4.
 
@@ -46,16 +46,16 @@ Solvers
 
 Currently, the code supports Z3 and CVC4. You need to set the solver using
 
-   Set SMT Solver "z3".
+    Set SMT Solver "z3".
 
 or
 
-   Set SMT Solver "cvc4".
+    Set SMT Solver "cvc4".
 
 You can toggle debugging globally using:
 
-   Set SMT Debug.
-   Unset SMT Debug.
+    Set SMT Debug.
+    Unset SMT Debug.
 
 Implementing Your Own Solver
 ----------------------------
@@ -63,7 +63,7 @@ Implementing Your Own Solver
 You can implement your own solver interface using a Coq Plugin. At the high
 level, you should call:
 
-   SmtTactic.register_smt_solver : <name> -> (<options> -> <solver>) -> unit
+    SmtTactic.register_smt_solver : <name> -> (<options> -> <solver>) -> unit
 
 and then set up the solver appropriately. Note that solver names can *NOT*
 contain colons (:). The string passed will be split on the first colon (if
