@@ -19,9 +19,19 @@ you can run:
 
     smt solve.
 
-If the tactic succees then the solver solved the tactic. If it fails it will
-display an error message. To get more information about the problem that was
-passed to the smt solver, run 'smt solve_dbg'.
+If the solver solves the goal then the tactic will succeed. If the solver
+returns an unsat core then the tactic will act like
+
+    clear - <unsat core>.
+
+otherwise it will simply act like idtac (doing nothing to the goal).
+If the solver fails to solve the goal then the tactic will fail and
+display the sat model if the solver returns one. A common way to use
+the tactic is something like the following:
+
+   smt solve; admit.
+
+which will admit the goal only if it is solved by the SMT solver.
 
 You can also specify the solver to use in the tactic using the syntax:
 
