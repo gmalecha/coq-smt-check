@@ -11,12 +11,14 @@ struct
   let ptrn_unknown = Str.regexp "^unknown"
   let ptrn_split = Str.regexp " "
 
-  let ptrn_def = Str.regexp "(define-fun \\(\\w+\\) () Real[ \n\r\t]+(?\\(-? [0-9]*.[0-9]*\\))?)"
+  let ptrn_def =
+    Str.regexp "(define-fun \\([^ ]+\\) () Real[ \r\n]+\\([^)]+\\))"
 
-  let extract_model debug inst =
+  let extract_model debug inst start result =
+    debug (fun _ ->
+        Pp.(str "extract model: " ++ fnl () ++
+            str (String.sub result start (String.length result - start)) ++ fnl ())) ;
     let rec extract_model start result =
-      debug (fun _ -> Pp.(str "extract model: " ++ fnl () ++
-                          str (String.sub result start (String.length result - start)) ++ fnl ())) ;
       try
         let _ = Str.search_forward ptrn_def result start in
         let var = RealInstance.get_variable (Str.matched_group 1 result) inst in
@@ -24,7 +26,7 @@ struct
         (var, value) :: extract_model (Str.match_end ()) result
       with
         Not_found -> []
-    in extract_model
+    in extract_model start result
 
   let filter_map f =
     let rec filter_map = function

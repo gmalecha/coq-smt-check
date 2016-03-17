@@ -106,7 +106,7 @@ end
 (** TODO: Clean this up **)
 
 TACTIC EXTEND smt_tac_solve
-  | ["smt" "solve"] -> [SmtTactic.smtTactic None]
+  | ["smt" "solve"] -> [SmtTactic.smtTactic ~verbose:true None]
 END;;
 
 TACTIC EXTEND smt_tac_solve_dbg
@@ -120,5 +120,5 @@ TACTIC EXTEND smt_tac_solve_dbg_calling
 END;;
 
 TACTIC EXTEND smt_tac_solve_calling
-  | ["smt" "solve" "calling" string(s)] -> [SmtTactic.smtTactic (Some s)]
+  | ["smt" "solve" "calling" string(s)] -> [SmtTactic.smtTactic ~verbose:true (Some s)]
 END;;
