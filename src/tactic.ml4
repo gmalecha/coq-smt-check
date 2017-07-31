@@ -6,7 +6,7 @@ open Evd
 open Goal
 open Printf
 open Unix
-open Errors
+open Stdarg (* for `wit_string`, the string argument parser *)
 open Plugin_utils
 
 DECLARE PLUGIN "smtTactic"

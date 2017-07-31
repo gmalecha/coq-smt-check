@@ -9,10 +9,10 @@ module type Instance =
 sig
   type instance
 
-  val parse_conclusion : Environ.env -> Evd.evar_map ->
+  val parse_conclusion : Environ.env -> _ Sigma.t ->
     Term.constr -> instance
 
-  val parse_hypothesis : Environ.env -> Evd.evar_map ->
+  val parse_hypothesis : Environ.env -> _ Sigma.t ->
     Names.Id.t -> Term.constr -> instance -> instance
 
   val write_instance : ?pretty:bool -> Format.formatter -> instance -> unit
@@ -29,7 +29,7 @@ struct
   type instance = P.instance
 
   let is_a_prop env evm t =
-    let (_,ty) = Typing.type_of env evm t in
+    let (_,ty) = Typing.type_of env (Sigma.to_evar_map evm) t in
     Term.eq_constr ty Term.mkProp
 
   let parse_conclusion env evm c =
@@ -69,8 +69,11 @@ struct
 
   let parse_instance env evm hyps concl =
     let res = Inst.parse_conclusion env evm concl in
-    List.fold_left (fun acc (name, _decl, typ) ->
-        Inst.parse_hypothesis env evm name typ acc) res hyps
+    List.fold_left (fun acc -> function
+        | Context.Named.Declaration.LocalAssum (name, typ) ->
+          Inst.parse_hypothesis env evm name typ acc
+        | Context.Named.Declaration.LocalDef (name, _, typ) ->
+          Inst.parse_hypothesis env evm name typ acc) res hyps
 
   module Std = Coqstd.Std
       (struct
@@ -83,46 +86,46 @@ struct
   let pr_model env evm =
     Pp.pr_vertical_list
       (fun (var,value) ->
-         Pp.(Printer.pr_constr_env env evm var ++
+         Pp.(Printer.pr_constr_env env (Sigma.to_evar_map evm) var ++
              spc () ++ str "=" ++ spc () ++ str value))
 
   let solve ~debug ~verbose =
-    Proofview.Goal.nf_enter begin fun gl ->
-    let goal = Proofview.Goal.concl gl in
-    let hyps = Proofview.Goal.hyps gl in
-    let env  = Proofview.Goal.env gl in
-    let evm  = Proofview.Goal.sigma gl in
     let debug =
-      if debug then (fun x -> Pp.msg_debug (x ()))
+      if debug then (fun x -> Feedback.msg_debug (x ()))
       else fun _ -> ()
     in
+    Proofview.Goal.nf_enter { Proofview.Goal.enter = fun gl ->
+        let goal = Proofview.Goal.concl gl in
+        let hyps = Proofview.Goal.hyps gl in
+        let env  = Proofview.Goal.env gl in
+        let evm  = Proofview.Goal.sigma gl in
 
-    try
-      let inst = parse_instance env evm hyps goal in
-      match Exec.execute debug inst with
-        Sat model when verbose ->
-        let msg =
-	   Pp.(   str "solver failed to solve the goal."
-               ++ fnl ()
-	       ++ pr_model env evm model)
-	in
-        Tacticals.New.tclFAIL 0 msg
-      | Sat _ ->
-        Tacticals.New.tclFAIL 0 Pp.(str "Satisfiable")
-      | Unsat (Some (need_concl, core)) ->
-        let open Proofview.Monad in
-        (if not need_concl
-         then Tactics.elim_type (Lazy.force false_type)
-         else Proofview.tclUNIT ()) >>
-        (Tactics.keep core)
-      | Unsat None ->
-        Tacticals.New.tclIDTAC
-      | Unknown ->
-        Tacticals.New.tclFAIL 0 Pp.(str "solver returned unkown")
-    with
-      Failure msg ->
-      Tacticals.New.tclFAIL 0 Pp.(str "failed to parse the goal")
-    end
+        try
+          let inst = parse_instance env evm hyps goal in
+          match Exec.execute debug inst with
+            Sat model when verbose ->
+            let msg =
+	      Pp.(   str "solver failed to solve the goal."
+                  ++ fnl ()
+	          ++ pr_model env evm model)
+	    in
+            Tacticals.New.tclFAIL 0 msg
+          | Sat _ ->
+            Tacticals.New.tclFAIL 0 Pp.(str "Satisfiable")
+          | Unsat (Some (need_concl, core)) ->
+            let open Proofview.Monad in
+            (if not need_concl
+             then Tactics.elim_type (Lazy.force false_type)
+             else Proofview.tclUNIT ()) >>
+            (Tactics.keep core)
+          | Unsat None ->
+            Tacticals.New.tclIDTAC
+          | Unknown ->
+            Tacticals.New.tclFAIL 0 Pp.(str "solver returned unkown")
+        with
+          Failure msg ->
+          Tacticals.New.tclFAIL 0 Pp.(str "failed to parse the goal")
+    }
 
 end
 

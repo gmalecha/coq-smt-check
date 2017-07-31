@@ -8,10 +8,10 @@ module type Instance =
 sig
   type instance
 
-  val parse_conclusion : Environ.env -> Evd.evar_map ->
+  val parse_conclusion : Environ.env -> _ Sigma.t ->
     Term.constr -> instance
 
-  val parse_hypothesis : Environ.env -> Evd.evar_map ->
+  val parse_hypothesis : Environ.env -> _ Sigma.t ->
     Names.Id.t -> Term.constr -> instance -> instance
 
   val write_instance : ?pretty:bool -> Format.formatter -> instance -> unit
