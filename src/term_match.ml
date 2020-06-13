@@ -1,8 +1,8 @@
 type ('a,'b,'c) pattern =
-| Glob of Constr.t Lazy.t
-| EGlob of Constr.t
-| Glob_no_univ of Constr.t Lazy.t
-| EGlob_no_univ of Constr.t
+| Glob of Names.GlobRef.t Lazy.t
+| EGlob of Names.GlobRef.t
+| Exact of Constr.t
+| EExact of EConstr.t
 | App of ('a,'b,'c) pattern * ('a,'b,'c) pattern
 | Lam of 'b * ('a,'b,'c) pattern * ('a,'b,'c) pattern
 | As of ('a,'b,'c) pattern * 'a
@@ -25,43 +25,28 @@ let rec apps f ls =
 let get x =
   As (Ignore, x)
 
-let eq_constr a b = Constr.compare a b = 0
-
 (** NOTE: This function does not clear writes by failed choices **)
 let rec match_pattern p e ctx s =
   match p with
   | Ignore -> s
-  | Glob name ->
-    begin
-      if eq_constr (Lazy.force name) e
-      then
-	s
-      else
-	raise Match_failure
-    end
+  | Exact c -> if Constr.equal c e then s else raise Match_failure
+  | EExact c -> assert false
+  | Glob name -> match_pattern (EGlob (Lazy.force name)) e ctx s
   | EGlob name ->
     begin
-      if eq_constr name e
-      then
-	s
-      else
-	raise Match_failure
-    end
-  | Glob_no_univ name ->
-    begin
-      if Constr.eq_constr_nounivs (Lazy.force name) e
-      then
-	s
-      else
-	raise Match_failure
-    end
-  | EGlob_no_univ name ->
-    begin
-      if Constr.eq_constr_nounivs name e
-      then
-	s
-      else
-	raise Match_failure
+      let open Constr in
+      let open Names in
+      let egr =
+        match kind e with
+        | Const (c,_) -> GlobRef.ConstRef c
+        | Ind (i, _) -> GlobRef.IndRef i
+        | Construct (c, _) -> GlobRef.ConstructRef c
+        | Var id -> GlobRef.VarRef id
+        | _ -> raise Match_failure
+      in
+      if Names.GlobRef.equal name egr
+      then s
+      else raise Match_failure
     end
   | Filter (f, p) ->
     if f ctx e then match_pattern p e ctx s else raise Match_failure
@@ -147,6 +132,9 @@ let matches gl ls e =
 	  recur ls
   in
   recur ls
+
+let ematches gl sls e = assert false
+let ematch_pattern p e ctx s = assert false
 
 let matches_app gl ls e args from =
   let x = Hashtbl.create 5 in

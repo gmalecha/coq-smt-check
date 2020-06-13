@@ -1,5 +1,6 @@
 open Names
-open GlobRef
+open Util
+
 
 module type Solver =
 sig
@@ -129,8 +130,6 @@ end
 
 module RealInstance : Instance =
 struct
-  open Coqlib
-
   (* module Std = Coqstd.Std
    *     (struct
    *       let contrib_name = "smt-check-real-instance"
@@ -165,14 +164,15 @@ struct
   let c_eq = r_logic "eq"
   let c_Prop = Constr.mkProp
 
-  module ConstrOrd =
+  module EConstrOrd =
   struct
-    type t = Constr.t
-    let compare = Constr.compare
+    type t = EConstr.t
+    let compare a b =
+      Constr.compare (EConstr.Unsafe.to_constr a) (EConstr.Unsafe.to_constr b)
   end
 
   (* constr maps *)
-  module Cmap = Map.Make (ConstrOrd)
+  module ECmap = Map.Make(EConstrOrd)
 
   type r_type = Prop | R
 
@@ -201,16 +201,16 @@ struct
     | Popaque of int
 
   type instance =
-    { vars : (int * r_type) Cmap.t
+    { vars : (int * r_type) ECmap.t
     ; assertions : (Names.Id.t * r_prop) list
     ; concl : r_prop }
 
   let get_opaque x t i =
-    try fst (Cmap.find x i), i
+    try fst (ECmap.find x i), i
     with
       Not_found ->
-      let nxt = Cmap.cardinal i in
-      nxt, (Cmap.add x (nxt, t) i)
+      let nxt = ECmap.cardinal i in
+      nxt, (ECmap.add x (nxt, t) i)
 
 
   let parse_uop recur constr op =
@@ -229,7 +229,7 @@ struct
      (op l r, tbl))
 
   let rec parse_expr tbl =
-    Term_match.matches tbl
+    Term_match.ematches tbl
       [ (Term_match.Glob c_0, fun tbl _ -> (RConst 0., tbl))
       ; (Term_match.Glob c_1, fun tbl _ -> (RConst 1., tbl))
       ; parse_bop parse_expr c_Rplus (fun a b -> Rplus (a,b))
@@ -242,15 +242,15 @@ struct
 	 fun tbl binders ->
 	 let trm = Hashtbl.find binders 0 in
 	 try
-	   (Ropaque (fst (Cmap.find trm tbl)), tbl)
+	   (Ropaque (fst (ECmap.find trm tbl)), tbl)
 	 with
 	   Not_found ->
-	   let nxt = Cmap.cardinal tbl in
-	   (Ropaque nxt, Cmap.add trm (nxt,R) tbl))
+	   let nxt = ECmap.cardinal tbl in
+	   (Ropaque nxt, ECmap.add trm (nxt,R) tbl))
       ]
 
   let rec parse_prop tbl =
-    Term_match.matches tbl
+    Term_match.ematches tbl
       [ parse_bop parse_expr c_Rlt (fun a b -> Rlt (a,b))
       ; parse_bop parse_expr c_Rle (fun a b -> Rle (a,b))
       ; parse_bop parse_expr c_Rgt (fun a b -> Rgt (a,b))
@@ -283,7 +283,7 @@ struct
     { i with vars = vs ; assertions = (name, h) :: i.assertions }
 
   let parse_conclusion _ _ x =
-    let (c,vs) = parse_prop Cmap.empty x in
+    let (c,vs) = parse_prop ECmap.empty x in
     { vars = vs ; assertions = [] ; concl = c }
 
   (** Printing **)
@@ -315,7 +315,7 @@ struct
 
 
   let print_identifier out id =
-    Format.fprintf out "%s" (Names.string_of_id id)
+    Format.fprintf out "%s" (Names.Id.to_string id)
 
   let print_named_assert pr_id out (nm,e) =
     Format.fprintf out "(assert (! %a :named %a))" print_r_prop e pr_id nm
@@ -335,7 +335,7 @@ struct
     pr_list
 
   let pr_decls out =
-    Cmap.iter (fun _ (k,v) ->
+    ECmap.iter (fun _ (k,v) ->
         Format.fprintf out "(declare-const x%d %a)" k print_type v)
 
   let print_a_string out s =
@@ -358,7 +358,7 @@ struct
       int_of_string rest
     in
     match
-      Cmap.fold (fun k (var, _) acc ->
+      ECmap.fold (fun k (var, _) acc ->
           if var = x then Some k else acc)
         inst.vars None
     with
@@ -367,6 +367,6 @@ struct
 
   let get_hypothesis x inst =
     if x = conclusion_name then None
-    else Some (Names.id_of_string x)
+    else Some (Names.Id.of_string x)
 
 end
