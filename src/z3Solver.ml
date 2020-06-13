@@ -1,10 +1,8 @@
 open Solver
 
-module Z3Exec : (Exec with type instance = RealInstance.instance) =
+module Z3Exec (I : Instance) : (Exec with type instance = I.instance) =
 struct
-  open RealInstance
-
-  type instance = RealInstance.instance
+  type instance = I.instance
 
   let ptrn_success = Str.regexp "^unsat (\\([^)]*\\))"
   let ptrn_failure = Str.regexp "^sat ([^)]*) (model\\(.+\\)) ?$"
@@ -21,7 +19,7 @@ struct
     let rec extract_model start result =
       try
         let _ = Str.search_forward ptrn_def result start in
-        let var = RealInstance.get_variable (Str.matched_group 1 result) inst in
+        let var = I.get_variable (Str.matched_group 1 result) inst in
         let value = Str.matched_group 2 result in
         (var, value) :: extract_model (Str.match_end ()) result
       with
@@ -46,7 +44,7 @@ struct
     if Str.string_partial_match ptrn_success result 0 then
       let lst = Str.matched_group 1 result in
       let names = Str.split ptrn_split lst in
-      let names = List.map (fun x -> RealInstance.get_hypothesis x inst) names in
+      let names = List.map (fun x -> I.get_hypothesis x inst) names in
       Unsat (Some (List.exists (function None -> true | _ -> false) names,
                    filter_map (fun x -> x) names))
     else if Str.string_match ptrn_failure result 0 then
@@ -65,7 +63,7 @@ struct
 	let fmt = Format.formatter_of_out_channel out_channel in
 	Format.fprintf fmt "(set-option :produce-unsat-cores true)\n" ;
 	Format.fprintf fmt "(set-option :produce-models true)\n" ;
-        RealInstance.write_instance fmt inst ;
+        I.write_instance fmt inst ;
 	Format.fprintf fmt "(check-sat)\n(get-unsat-core)\n(get-model)" ;
 	Format.pp_print_flush fmt () ;
 	flush out_channel ;
@@ -78,7 +76,7 @@ struct
     let chars_read = ref 1 in
     while !chars_read <> 0 do
       chars_read := input in_channel string 0 buffer_size;
-      Buffer.add_substring buffer string 0 !chars_read
+      Buffer.add_subbytes buffer string 0 !chars_read
     done;
     ignore (Unix.close_process (in_channel, out_channel));
     let result = Buffer.contents buffer in

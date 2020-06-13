@@ -1,9 +1,9 @@
 -I src
 -Q theories SMTC
 
--I $(COQLIB)/user-contrib/PluginUtils/
-
-src/tactic.ml4
+src/g_smt_check.mlg
+src/term_match.mli
+src/term_match.ml
 src/solver.mli
 src/solver.ml
 src/z3Solver.ml

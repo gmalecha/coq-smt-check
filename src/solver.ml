@@ -1,4 +1,5 @@
-open Plugin_utils
+open Names
+open GlobRef
 
 module type Solver =
 sig
@@ -9,18 +10,18 @@ module type Instance =
 sig
   type instance
 
-  val parse_conclusion : Environ.env -> _ Sigma.t ->
-    Term.constr -> instance
+  val parse_conclusion : Environ.env -> Evd.evar_map ->
+    Evd.econstr -> instance
 
-  val parse_hypothesis : Environ.env -> _ Sigma.t ->
-    Names.Id.t -> Term.constr -> instance -> instance
+  val parse_hypothesis : Environ.env -> Evd.evar_map ->
+    Names.Id.t -> Evd.econstr -> instance -> instance
 
   val write_instance : ?pretty:bool -> Format.formatter -> instance -> unit
 
-  val get_variable : string -> instance -> Term.constr
+  val get_variable : string -> instance -> EConstr.t
 
   (* Returning [None] means the conclusion *)
-  val get_hypothesis : string -> instance -> Names.identifier option
+  val get_hypothesis : string -> instance -> Names.Id.t option
 end
 
 module ParseOnlyProp (P : Instance) :
@@ -28,9 +29,9 @@ module ParseOnlyProp (P : Instance) :
 struct
   type instance = P.instance
 
-  let is_a_prop env evm t =
-    let (_,ty) = Typing.type_of env (Sigma.to_evar_map evm) t in
-    Term.eq_constr ty Term.mkProp
+  let is_a_prop env evm (t : EConstr.t) =
+    let (_,ty) = Typing.type_of env evm t in
+    EConstr.eq_constr evm ty EConstr.mkProp
 
   let parse_conclusion env evm c =
     if is_a_prop env evm c then
@@ -49,44 +50,41 @@ struct
 end
 
 type smt_result =
-    Sat of (Term.constr * string) list
-  | Unsat of (bool * Names.identifier list) option (* the core *)
+    Sat of (EConstr.t * string) list
+  | Unsat of (bool * Names.Id.t list) option (* the core *)
   | Unknown
 
 module type Exec =
 sig
   type instance
 
-  val execute : debug:((unit -> Pp.std_ppcmds) -> unit) -> instance -> smt_result
+  val execute : debug:((unit -> Pp.t) -> unit) -> instance -> smt_result
 end
 
 module Make
     (Inst : Instance)
     (Exec : Exec with type instance = Inst.instance) : Solver =
 struct
-  open Inst
-  open Exec
-
   let parse_instance env evm hyps concl =
     let res = Inst.parse_conclusion env evm concl in
     List.fold_left (fun acc -> function
         | Context.Named.Declaration.LocalAssum (name, typ) ->
-          Inst.parse_hypothesis env evm name typ acc
+          Inst.parse_hypothesis env evm name.Context.binder_name typ acc
         | Context.Named.Declaration.LocalDef (name, _, typ) ->
-          Inst.parse_hypothesis env evm name typ acc) res hyps
+          Inst.parse_hypothesis env evm name.Context.binder_name typ acc) res hyps
 
-  module Std = Coqstd.Std
-      (struct
-        let contrib_name = "smt-check-real-instance"
-      end)
+  (* module Std = Coqstd.Std
+   *     (struct
+   *       let contrib_name = "smt-check-real-instance"
+   *     end) *)
 
-  let false_type : Term.constr Lazy.t =
-    Std.resolve_symbol ["Coq";"Init";"Logic"] "False"
+  let false_type : EConstr.t Lazy.t =
+    lazy (assert false) (* Std.resolve_symbol ["Coq";"Init";"Logic"] "False" *)
 
   let pr_model env evm =
     Pp.pr_vertical_list
       (fun (var,value) ->
-         Pp.(Printer.pr_constr_env env (Sigma.to_evar_map evm) var ++
+         Pp.(Printer.pr_econstr_env env evm var ++
              spc () ++ str "=" ++ spc () ++ str value))
 
   let solve ~debug ~verbose =
@@ -94,7 +92,7 @@ struct
       if debug then (fun x -> Feedback.msg_debug (x ()))
       else fun _ -> ()
     in
-    Proofview.Goal.nf_enter { Proofview.Goal.enter = fun gl ->
+    Proofview.Goal.enter (fun gl ->
         let goal = Proofview.Goal.concl gl in
         let hyps = Proofview.Goal.hyps gl in
         let env  = Proofview.Goal.env gl in
@@ -102,7 +100,7 @@ struct
 
         try
           let inst = parse_instance env evm hyps goal in
-          match Exec.execute debug inst with
+          match Exec.execute ~debug inst with
             Sat model when verbose ->
             let msg =
 	      Pp.(   str "solver failed to solve the goal."
@@ -125,51 +123,55 @@ struct
         with
           Failure msg ->
           Tacticals.New.tclFAIL 0 Pp.(str "failed to parse the goal")
-    }
+    )
 
 end
 
-
 module RealInstance : Instance =
 struct
+  open Coqlib
 
-  module Std = Coqstd.Std
-      (struct
-        let contrib_name = "smt-check-real-instance"
-      end)
+  (* module Std = Coqstd.Std
+   *     (struct
+   *       let contrib_name = "smt-check-real-instance"
+   *     end) *)
 
-  let r_pkg = ["Coq";"Reals";"Rdefinitions"]
-  let logic_pkg = ["Coq";"Init";"Logic"]
+  let resolve (tm : string) : GlobRef.t Lazy.t =
+    lazy (Coqlib.lib_ref tm)
 
-  let c_R = Std.resolve_symbol r_pkg "R"
-  let c_0 = Std.resolve_symbol r_pkg "R0"
-  let c_1 = Std.resolve_symbol r_pkg "R1"
-  let c_Rplus = Std.resolve_symbol r_pkg "Rplus"
-  let c_Rminus = Std.resolve_symbol r_pkg "Rminus"
-  let c_Rdiv = Std.resolve_symbol r_pkg "Rdiv"
-  let c_Rmult = Std.resolve_symbol r_pkg "Rmult"
-  let c_Ropp = Std.resolve_symbol r_pkg "Ropp"
-  let c_Rinv = Std.resolve_symbol r_pkg "Rinv"
+  let r_real s = resolve ("Coq.Reals.Rdefinitions." ^ s)
+  let r_logic s = resolve ("Coq.Init.Logic." ^ s)
 
-  let c_Rlt = Std.resolve_symbol r_pkg "Rlt"
-  let c_Rle = Std.resolve_symbol r_pkg "Rle"
-  let c_Rgt = Std.resolve_symbol r_pkg "Rgt"
-  let c_Rge = Std.resolve_symbol r_pkg "Rge"
+  let c_R = r_real "R"
+  let c_0 = r_real "R0"
+  let c_1 = r_real "R1"
+  let c_Rplus = r_real "Rplus"
+  let c_Rminus = r_real "Rminus"
+  let c_Rdiv = r_real "Rdiv"
+  let c_Rmult = r_real "Rmult"
+  let c_Ropp = r_real "Ropp"
+  let c_Rinv = r_real "Rinv"
 
-  let c_and = Std.resolve_symbol logic_pkg "and"
-  let c_or = Std.resolve_symbol logic_pkg "or"
-  let c_True = Std.resolve_symbol logic_pkg "True"
-  let c_False = Std.resolve_symbol logic_pkg "False"
-  let c_Not = Std.resolve_symbol logic_pkg "not"
-  let c_eq = Std.resolve_symbol logic_pkg "eq"
-  let c_Prop = Term.mkProp
+  let c_Rlt = r_real "Rlt"
+  let c_Rle = r_real "Rle"
+  let c_Rgt = r_real "Rgt"
+  let c_Rge = r_real "Rge"
+
+  let c_and = r_logic "and"
+  let c_or = r_logic "or"
+  let c_True = r_logic "True"
+  let c_False = r_logic "False"
+  let c_Not = r_logic "not"
+  let c_eq = r_logic "eq"
+  let c_Prop = Constr.mkProp
 
   module ConstrOrd =
   struct
-    type t = Term.constr
-    let compare = Term.constr_ord
+    type t = Constr.t
+    let compare = Constr.compare
   end
 
+  (* constr maps *)
   module Cmap = Map.Make (ConstrOrd)
 
   type r_type = Prop | R
@@ -200,7 +202,7 @@ struct
 
   type instance =
     { vars : (int * r_type) Cmap.t
-    ; assertions : (Names.identifier * r_prop) list
+    ; assertions : (Names.Id.t * r_prop) list
     ; concl : r_prop }
 
   let get_opaque x t i =

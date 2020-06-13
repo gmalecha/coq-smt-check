@@ -1,3 +1,6 @@
+DECLARE PLUGIN "smtTactic"
+
+{
 open Util
 open Pp
 open Names
@@ -7,9 +10,7 @@ open Goal
 open Printf
 open Unix
 open Stdarg (* for `wit_string`, the string argument parser *)
-open Plugin_utils
 
-DECLARE PLUGIN "smtTactic"
 
 module SmtTactic
 : sig
@@ -71,8 +72,7 @@ struct
 
   let _ =
     Goptions.(declare_string_option
-      { optsync  = false
-      ; optdepr  = false
+      { optdepr  = false
       ; optkey   = ["SMT"; "Solver"]
       ; optname  = "set the smt solver for the smt-check plugin to use"
       ; optread  = smt_reader
@@ -80,8 +80,7 @@ struct
 
   let _ =
     Goptions.(declare_bool_option
-      { optsync  = false
-      ; optdepr  = false
+      { optdepr  = false
       ; optkey   = ["SMT"; "Debug"]
       ; optname  = "print debugging output"
       ; optread  = (fun () -> !smt_debug)
@@ -103,22 +102,26 @@ struct
 
 end
 
+}
+
 (** TODO: Clean this up **)
 
 TACTIC EXTEND smt_tac_solve
-  | ["smt" "solve"] -> [SmtTactic.smtTactic ~verbose:true None]
-END;;
+  | ["smt" "solve"] ->
+    { SmtTactic.smtTactic ~verbose:true None }
+END
 
 TACTIC EXTEND smt_tac_solve_dbg
   | ["smt" "solve_dbg"] ->
-    [SmtTactic.smtTactic ~debug:true ~verbose:true None]
-END;;
+    { SmtTactic.smtTactic ~debug:true ~verbose:true None }
+END
 
 TACTIC EXTEND smt_tac_solve_dbg_calling
   | ["smt" "solve_dbg" "calling" string(s) ] ->
-    [SmtTactic.smtTactic ~debug:true ~verbose:true (Some s)]
-END;;
+    { SmtTactic.smtTactic ~debug:true ~verbose:true (Some s) }
+END
 
 TACTIC EXTEND smt_tac_solve_calling
-  | ["smt" "solve" "calling" string(s)] -> [SmtTactic.smtTactic ~verbose:true (Some s)]
-END;;
+  | ["smt" "solve" "calling" string(s)] ->
+    { SmtTactic.smtTactic ~verbose:true (Some s) }
+END
