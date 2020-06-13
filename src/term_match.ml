@@ -2,7 +2,6 @@ type ('a,'b,'c) pattern =
 | Glob of Names.GlobRef.t Lazy.t
 | EGlob of Names.GlobRef.t
 | Exact of Constr.t
-| EExact of EConstr.t
 | App of ('a,'b,'c) pattern * ('a,'b,'c) pattern
 | Lam of 'b * ('a,'b,'c) pattern * ('a,'b,'c) pattern
 | As of ('a,'b,'c) pattern * 'a
@@ -30,7 +29,6 @@ let rec match_pattern p e ctx s =
   match p with
   | Ignore -> s
   | Exact c -> if Constr.equal c e then s else raise Match_failure
-  | EExact c -> assert false
   | Glob name -> match_pattern (EGlob (Lazy.force name)) e ctx s
   | EGlob name ->
     begin

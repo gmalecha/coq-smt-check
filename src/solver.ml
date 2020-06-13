@@ -228,16 +228,16 @@ struct
      let (r,tbl) = recur tbl (Hashtbl.find bindings 1) in
      (op l r, tbl))
 
-  let rec parse_expr tbl =
+  let rec parse_expr evd tbl =
     Term_match.ematches tbl
       [ (Term_match.Glob c_0, fun tbl _ -> (RConst 0., tbl))
       ; (Term_match.Glob c_1, fun tbl _ -> (RConst 1., tbl))
-      ; parse_bop parse_expr c_Rplus (fun a b -> Rplus (a,b))
-      ; parse_bop parse_expr c_Rminus (fun a b -> Rminus (a,b))
-      ; parse_bop parse_expr c_Rmult (fun a b -> Rmult (a,b))
-      ; parse_bop parse_expr c_Rdiv (fun a b -> Rdiv (a,b))
-      ; parse_uop parse_expr c_Ropp (fun a -> Ropp a)
-      ; parse_uop parse_expr c_Rinv (fun a -> Rinv a)
+      ; parse_bop (parse_expr evd) c_Rplus (fun a b -> Rplus (a,b))
+      ; parse_bop (parse_expr evd) c_Rminus (fun a b -> Rminus (a,b))
+      ; parse_bop (parse_expr evd) c_Rmult (fun a b -> Rmult (a,b))
+      ; parse_bop (parse_expr evd) c_Rdiv (fun a b -> Rdiv (a,b))
+      ; parse_uop (parse_expr evd) c_Ropp (fun a -> Ropp a)
+      ; parse_uop (parse_expr evd) c_Rinv (fun a -> Rinv a)
       ; (Term_match.get 0,
 	 fun tbl binders ->
 	 let trm = Hashtbl.find binders 0 in
@@ -247,27 +247,27 @@ struct
 	   Not_found ->
 	   let nxt = ECmap.cardinal tbl in
 	   (Ropaque nxt, ECmap.add trm (nxt,R) tbl))
-      ]
+      ] evd
 
-  let rec parse_prop tbl =
+  let rec parse_prop evd tbl =
     Term_match.ematches tbl
-      [ parse_bop parse_expr c_Rlt (fun a b -> Rlt (a,b))
-      ; parse_bop parse_expr c_Rle (fun a b -> Rle (a,b))
-      ; parse_bop parse_expr c_Rgt (fun a b -> Rgt (a,b))
-      ; parse_bop parse_expr c_Rge (fun a b -> Rge (a,b))
+      [ parse_bop (parse_expr evd) c_Rlt (fun a b -> Rlt (a,b))
+      ; parse_bop (parse_expr evd) c_Rle (fun a b -> Rle (a,b))
+      ; parse_bop (parse_expr evd) c_Rgt (fun a b -> Rgt (a,b))
+      ; parse_bop (parse_expr evd) c_Rge (fun a b -> Rge (a,b))
       ; (Term_match.apps (Term_match.Glob c_eq)
 			 [Term_match.Glob c_R;
 			  Term_match.get 0;
 			  Term_match.get 1],
 	 fun tbl bindings ->
-	 let (l,tbl) = parse_expr tbl (Hashtbl.find bindings 0) in
-	 let (r,tbl) = parse_expr tbl (Hashtbl.find bindings 1) in
+	 let (l,tbl) = parse_expr evd tbl (Hashtbl.find bindings 0) in
+	 let (r,tbl) = parse_expr evd tbl (Hashtbl.find bindings 1) in
 	 (Req (l, r), tbl))
-      ; parse_bop parse_prop c_and (fun a b -> Rand (a,b))
-      ; parse_bop parse_prop c_or  (fun a b -> Ror (a,b))
+      ; parse_bop (parse_prop evd) c_and (fun a b -> Rand (a,b))
+      ; parse_bop (parse_prop evd) c_or  (fun a b -> Ror (a,b))
       ; (Term_match.apps (Term_match.Glob c_Not)
 	   [Term_match.get 0], fun tbl bindings ->
-	     let (l,tbl) = parse_prop tbl (Hashtbl.find bindings 0) in
+	     let (l,tbl) = parse_prop evd tbl (Hashtbl.find bindings 0) in
 	     (Rnot l, tbl))
       ; (Term_match.Glob c_True, fun tbl _ -> (Rtrue, tbl))
       ; (Term_match.Glob c_False, fun tbl _ -> (Rfalse, tbl))
@@ -276,14 +276,14 @@ struct
            let trm = Hashtbl.find binders 0 in
            let (o,tbl) = get_opaque trm Prop tbl in
 	   (Popaque o, tbl))
-      ]
+      ] evd
 
-  let parse_hypothesis _ _ name typ i =
-    let (h,vs) = parse_prop i.vars typ in
+  let parse_hypothesis _ evd name typ i =
+    let (h,vs) = parse_prop evd i.vars typ in
     { i with vars = vs ; assertions = (name, h) :: i.assertions }
 
-  let parse_conclusion _ _ x =
-    let (c,vs) = parse_prop ECmap.empty x in
+  let parse_conclusion _ evd x =
+    let (c,vs) = parse_prop evd ECmap.empty x in
     { vars = vs ; assertions = [] ; concl = c }
 
   (** Printing **)

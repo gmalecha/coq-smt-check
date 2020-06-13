@@ -2,7 +2,6 @@ type ('a,'b,'c) pattern =
 | Glob of Names.GlobRef.t Lazy.t
 | EGlob of Names.GlobRef.t
 | Exact of Constr.t
-| EExact of EConstr.t
 | App of ('a,'b,'c) pattern * ('a,'b,'c) pattern
 | Lam of 'b * ('a,'b,'c) pattern * ('a,'b,'c) pattern
 | As of ('a,'b,'c) pattern * 'a
@@ -21,9 +20,9 @@ val apps : ('a,'b,'c) pattern -> ('a,'b,'c) pattern list -> ('a,'b,'c) pattern
 val get : 'a -> ('a,'b,'c) pattern
 
 val match_pattern : ('a,'b,'c) pattern -> Constr.t -> 'c -> ('a,Constr.t) Hashtbl.t -> ('a,Constr.t) Hashtbl.t
-val ematch_pattern : ('a,'b,'c) pattern -> EConstr.t -> 'c -> ('a,EConstr.t) Hashtbl.t -> ('a,EConstr.t) Hashtbl.t
+val ematch_pattern : ('a,'b,'c) pattern -> Evd.evar_map -> EConstr.t -> 'c -> ('a,EConstr.t) Hashtbl.t -> ('a,EConstr.t) Hashtbl.t
 
 val matches : 'a -> (('b,'d,'a) pattern * ('a -> ('b, Constr.t) Hashtbl.t -> 'c)) list -> Constr.t -> 'c
-val ematches : 'a -> (('b,'d,'a) pattern * ('a -> ('b, EConstr.t) Hashtbl.t -> 'c)) list -> EConstr.t -> 'c
+val ematches : 'a -> (('b,'d,'a) pattern * ('a -> ('b, EConstr.t) Hashtbl.t -> 'c)) list -> Evd.evar_map -> EConstr.t -> 'c
 
 val matches_app : 'a -> (('b,'d,'a) pattern * ('a -> ('b, Constr.t) Hashtbl.t -> 'c)) list -> Constr.t -> Constr.t array -> int -> 'c
