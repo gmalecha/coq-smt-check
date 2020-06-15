@@ -132,7 +132,97 @@ let matches gl ls e =
   recur ls
 
 let ematches gl sls e = assert false
-let ematch_pattern p e ctx s = assert false
+let rec ematch_pattern p evd e ctx s =
+  match p with
+  | Ignore -> s
+  | Exact c -> if EConstr.eq_constr evd (EConstr.of_constr c) e
+               then s else raise Match_failure
+  | Glob name -> ematch_pattern (EGlob (Lazy.force name)) evd e ctx s
+  | EGlob name ->
+    begin
+      let open Constr in
+      let open Names in
+      let egr =
+        match EConstr.kind evd e with
+        | Const (c,_) -> GlobRef.ConstRef c
+        | Ind (i, _) -> GlobRef.IndRef i
+        | Construct (c, _) -> GlobRef.ConstructRef c
+        | Var id -> GlobRef.VarRef id
+        | _ -> raise Match_failure
+      in
+      if Names.GlobRef.equal name egr
+      then s
+      else raise Match_failure
+    end
+  | Filter (f, p) ->
+     raise Match_failure (* if f ctx e then ematch_pattern p evd e ctx s else raise Match_failure *)
+  | Choice pl ->
+    begin
+      let rec try_each pl =
+	match pl with
+	  [] -> raise Match_failure
+	| p :: pl ->
+	  try
+	    ematch_pattern p evd e ctx s
+	  with
+	    Match_failure -> try_each pl
+      in try_each pl
+    end
+  | App _ ->
+    begin
+      match EConstr.kind evd e with
+      | Constr.App (f, args) ->
+	  ematch_app evd f args (Array.length args - 1) p ctx s
+      | _ -> raise Match_failure
+    end
+  | Lam (nm, pty, pbody) ->
+    begin
+      match EConstr.kind evd e with
+      | Constr.Lambda (n, t, c) ->
+	let _ = ematch_pattern pty evd t ctx s in
+	ematch_pattern pbody evd c ctx s
+      | _ -> raise Match_failure
+    end
+  | As (ptrn, nm) ->
+    begin
+      let res = ematch_pattern ptrn evd e ctx s in
+      let _ = Hashtbl.add res nm e in
+      res
+    end
+  | Impl (l,r) ->
+    begin
+      match EConstr.kind evd e with
+	Constr.Prod (_, lhs, rhs) ->
+	  if EConstr.Vars.noccurn evd 1 rhs then
+	    let _ = ematch_pattern l evd lhs ctx s in
+	    ematch_pattern r evd rhs ctx s
+	  else
+	    raise Match_failure
+      | _ -> raise Match_failure
+    end
+  | Pi (l,r) ->
+    begin
+      match EConstr.kind evd e with
+	Constr.Prod (_, lhs, rhs) ->
+	  let _ = ematch_pattern l evd lhs ctx s in
+	  ematch_pattern r evd rhs ctx s
+      | _ -> raise Match_failure
+    end
+  | Sort ->
+    if EConstr.isSort evd e then s
+    else raise Match_failure
+  | Ref n ->
+    assert false
+and ematch_app evd f args i p ctx s =
+  if i < 0
+  then ematch_pattern p evd f ctx s
+  else
+    match p with
+      App (fp , arg_p) ->
+	let s = ematch_app evd f args (i - 1) fp ctx s in
+	ematch_pattern arg_p evd args.(i) ctx s
+    | _ ->
+      ematch_pattern p evd (EConstr.mkApp (f, Array.sub args 0 (i + 1))) ctx s
 
 let matches_app gl ls e args from =
   let x = Hashtbl.create 5 in
