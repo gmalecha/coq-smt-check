@@ -1,6 +1,7 @@
 DECLARE PLUGIN "smtTactic"
 
 {
+open Ltac_plugin
 open Util
 open Stdarg (* for `wit_string`, the string argument parser *)
 
