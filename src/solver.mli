@@ -40,4 +40,4 @@ module Make
     (Parse : Instance)
     (Exec : Exec with type instance = Parse.instance) : Solver
 
-(* module RealInstance : Instance *)
+module RealInstance : Instance

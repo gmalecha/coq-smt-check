@@ -2,13 +2,6 @@ DECLARE PLUGIN "smtTactic"
 
 {
 open Util
-open Pp
-open Names
-
-open Evd
-open Goal
-open Printf
-open Unix
 open Stdarg (* for `wit_string`, the string argument parser *)
 
 
@@ -18,8 +11,6 @@ module SmtTactic
     val register_smt_solver : string -> (string -> debug:bool -> verbose:bool -> unit Proofview.tactic) -> unit
   end =
 struct
-
-  let contrib_name = "smt-check"
 
   module Scmp =
   struct

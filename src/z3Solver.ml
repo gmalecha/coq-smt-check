@@ -84,6 +84,6 @@ struct
 
 end
 
-module Z3RealSolver = Solver.Make (Solver.RealInstance) (Z3Exec) ;;
+module Z3RealSolver = Solver.Make (Solver.RealInstance) (Z3Exec (Solver.RealInstance)) ;;
 
-Tactic.SmtTactic.register_smt_solver "z3" (fun _ -> Z3RealSolver.solve)
+G_smt_check.SmtTactic.register_smt_solver "z3" (fun _ -> Z3RealSolver.solve)

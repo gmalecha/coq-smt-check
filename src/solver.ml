@@ -162,7 +162,7 @@ struct
   let c_False = r_logic "False"
   let c_Not = r_logic "not"
   let c_eq = r_logic "eq"
-  let c_Prop = Constr.mkProp
+  (* let c_Prop = Constr.mkProp *)
 
   module EConstrOrd =
   struct
@@ -196,7 +196,7 @@ struct
     | Req of r_expr * r_expr
     | Rand of r_prop * r_prop
     | Ror of r_prop * r_prop
-    | Rimpl of r_prop * r_prop
+    (* | Rimpl of r_prop * r_prop *)
     | Rnot of r_prop
     | Popaque of int
 
@@ -306,7 +306,7 @@ struct
     | Popaque x -> Format.fprintf out "x%d" x
     | Rand (l,r) -> Format.fprintf out "(and %a %a)" print_r_prop l print_r_prop r
     | Ror (l,r) -> Format.fprintf out "(or %a %a)" print_r_prop l print_r_prop r
-    | Rimpl (l,r) -> Format.fprintf out "(=> %a %a)" print_r_prop l print_r_prop r
+    (* | Rimpl (l,r) -> Format.fprintf out "(=> %a %a)" print_r_prop l print_r_prop r *)
     | Rle (l,r) -> Format.fprintf out "(<= %a %a)" print_r_expr l print_r_expr r
     | Rlt (l,r) -> Format.fprintf out "(< %a %a)" print_r_expr l print_r_expr r
     | Rge (l,r) -> Format.fprintf out "(>= %a %a)" print_r_expr l print_r_expr r
