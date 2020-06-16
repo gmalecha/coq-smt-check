@@ -131,7 +131,6 @@ let matches gl ls e =
   in
   recur ls
 
-let ematches gl sls e = assert false
 let rec ematch_pattern p evd e ctx s =
   match p with
   | Ignore -> s
@@ -223,6 +222,21 @@ and ematch_app evd f args i p ctx s =
 	ematch_pattern arg_p evd args.(i) ctx s
     | _ ->
       ematch_pattern p evd (EConstr.mkApp (f, Array.sub args 0 (i + 1))) ctx s
+
+let ematches gl ls evd e =
+  let x = Hashtbl.create 5 in
+  let rec recur ls =
+    match ls with
+    | [] -> raise Match_failure
+    | (p,f) :: ls ->
+      try
+	f gl (ematch_pattern p evd e gl x)
+      with
+	Match_failure ->
+	  let _ = Hashtbl.clear x in
+	  recur ls
+  in
+  recur ls
 
 let matches_app gl ls e args from =
   let x = Hashtbl.create 5 in
