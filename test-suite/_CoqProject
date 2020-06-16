@@ -1,7 +1,6 @@
 -I ../src
 -Q ../theories SMTC
--R .
+-Q . SMTCTest
 
--I $(COQLIB)/user-contrib/PluginUtils/
 
 Test.v
